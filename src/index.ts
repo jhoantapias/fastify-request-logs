@@ -6,12 +6,23 @@ export type Req = FastifyRequest & {
   logger: Logger;
 };
 
+export interface LoggerOptions {
+  only_errors: boolean;
+  domain: string;
+  service: string;
+  module?: string;
+  colors: boolean;
+}
+
 export const LoggerInstance = Logger;
 
-export const logger = (application: FastifyInstance) => {
+export const logger = (
+  application: FastifyInstance,
+  options: LoggerOptions
+) => {
   application.addHook('preHandler', (req, _res, done) => {
     Object.defineProperty(req, 'logger', {
-      value: new Logger(req),
+      value: new Logger(req, options),
     });
     done();
   });
