@@ -1,12 +1,9 @@
 import * as CircularJSON from 'circular-json';
 import { Data, Finisher, Printer } from '../../domain';
-import {
-  FastifyRequestModel,
-  PubSubPayload,
-  isPubsub,
-} from '../../infrastructure';
+import { PubSubPayload, isPubsub } from '../../infrastructure';
 import { COLORS, decode, parse } from '../../util';
-import { LoggerOptions } from 'index';
+import { LoggerOptions } from '../../';
+import { Request } from '../../';
 
 export class Logger implements Printer, Finisher {
   private data: Data;
@@ -89,7 +86,7 @@ export class Logger implements Printer, Finisher {
     }
     return body as Record<string, unknown>;
   }
-  constructor(req: FastifyRequestModel, private options: LoggerOptions) {
+  constructor(req: Request, private options: LoggerOptions) {
     const { url, method, body, params } = req;
     this.data = {
       INFO: {

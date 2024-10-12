@@ -1,10 +1,6 @@
 import { Logger } from './domain';
-import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
-import _ from 'lodash';
-
-export type Req = FastifyRequest & {
-  logger: Logger;
-};
+import { hasProperty } from './util';
+import { isObjectLike } from './util';
 
 export interface LoggerOptions {
   only_errors: boolean;
@@ -16,35 +12,64 @@ export interface LoggerOptions {
 
 export const LoggerInstance = Logger;
 
-export const logger = (
-  application: FastifyInstance,
-  options: LoggerOptions
-) => {
-  application.addHook('preHandler', (req, _res, done) => {
-    Object.defineProperty(req, 'logger', {
-      value: new Logger(req, options),
-    });
-    done();
-  });
-  application.addHook<Record<string, unknown>>(
+interface Instance {
+  addHook(
+    name: 'preHandler',
+    hook: (request: Request, reply: any, done: (err?: Error) => void) => void
+  ): void;
+
+  addHook(
+    name: 'onSend',
+    hook: (
+      request: Request,
+      reply: Reply,
+      payload: Record<string, unknown>,
+      done: (err?: Error, newPayload?: any) => void
+    ) => void
+  ): void;
+}
+export interface Request {
+  id: string;
+  logger: Logger;
+  url: string;
+  method: string;
+  body: unknown;
+  params: unknown;
+}
+
+interface Reply {
+  send(data: Record<string, unknown>): void;
+  statusCode: number;
+}
+
+export const logger = (application: Instance | any, options: LoggerOptions) => {
+  if (!application) throw new Error('Application not found');
+  application.addHook(
+    'preHandler',
+    (req: Request, _: unknown, done: Function) => {
+      Object.defineProperty(req, 'logger', {
+        value: new Logger(req, options),
+      });
+      done();
+    }
+  );
+  application.addHook(
     'onSend',
-    (req: FastifyRequest, res: FastifyReply, payload, done) => {
-      const request = req as Req;
+    (
+      req: Request,
+      res: Reply,
+      payload: Record<string, unknown>,
+      done: Function
+    ) => {
       if ('logger' in req) {
-        const logger = request.logger as Logger;
+        const logger = req.logger as Logger;
         const isError =
-          _.isObjectLike(payload) &&
-          _.has(payload, 'isError') &&
-          payload?.isError === true;
+          isObjectLike(payload) &&
+          hasProperty(payload as object, 'isError') &&
+          (payload as { isError?: boolean })?.isError === true;
         logger.finish(payload, isError, res?.statusCode);
       } else {
-        console.log('MESSAGE: Logger is not implemented', {
-          url: req.url,
-          method: req.method,
-          statusCode: res.statusCode,
-          body: req.body,
-          response: payload,
-        });
+        console.error('MESSAGE: Logger is not implemented');
         console.log('ERROR: ', payload);
         res.send(payload);
       }

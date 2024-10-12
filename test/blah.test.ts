@@ -1,6 +1,6 @@
 import isBase64 from 'is-base64';
-import _ from 'lodash';
-describe('Lodash tests', () => {
+import { isPubsub } from '../src/infrastructure';
+describe('X tests', () => {
   it('Testing isBuffer', () => {
     const body = {
       message: {
@@ -8,9 +8,8 @@ describe('Lodash tests', () => {
         publishTime: new Date().toISOString(),
       },
     };
-    const isPubsub =
-      _.has(body, 'message.data') &&
-      isBase64((_.get(body, 'message.data') as unknown) as string);
+
+    const isPubsub2 = isPubsub(body);
     console.log(isPubsub);
     expect(isPubsub).toBe(true);
   });
