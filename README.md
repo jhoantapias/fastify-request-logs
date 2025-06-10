@@ -16,7 +16,8 @@ import { logger } from 'fastify-request-logs';
 
 const app = fastify();
 
-app.register(logger, {
+// Implementar el logger directamente
+logger(app, {
   only_errors: false,
   domain: 'mi-api',
   service: 'usuarios',
@@ -54,7 +55,7 @@ interface LoggerOptions {
 Para usar Google Cloud Logging, configura las opciones así:
 
 ```typescript
-app.register(logger, {
+logger(app, {
   only_errors: false,
   domain: 'mi-api',
   service: 'usuarios',
@@ -158,7 +159,7 @@ app.post('/webhook', async (request, reply) => {
 
 ### Desarrollo
 ```typescript
-app.register(logger, {
+logger(app, {
   only_errors: false,
   domain: 'dev-api',
   service: 'usuarios',
@@ -169,7 +170,7 @@ app.register(logger, {
 
 ### Producción
 ```typescript
-app.register(logger, {
+logger(app, {
   only_errors: false,
   domain: 'prod-api',
   service: 'usuarios',

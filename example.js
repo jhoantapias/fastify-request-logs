@@ -2,7 +2,9 @@ const fastify = require('fastify')({ logger: false });
 
 // Ejemplo 1: Usando console.log tradicional (desarrollo)
 console.log('=== Ejemplo 1: Console.log tradicional ===');
-fastify.register(require('./dist/index.js').logger, {
+const { logger } = require('./dist/index.js');
+
+logger(fastify, {
   only_errors: false,
   domain: 'dev-api',
   service: 'ejemplo',
@@ -15,7 +17,7 @@ fastify.register(require('./dist/index.js').logger, {
 // Descomenta las siguientes líneas para probar con Google Cloud
 /*
 console.log('=== Ejemplo 2: Google Cloud Logging ===');
-fastify.register(require('./dist/index.js').logger, {
+logger(fastify, {
   only_errors: false,
   domain: 'prod-api',
   service: 'ejemplo',
