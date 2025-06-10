@@ -1,103 +1,194 @@
-# TSDX User Guide
+# fastify-request-logs
 
-Congrats! You just saved yourself hours of work by bootstrapping this project with TSDX. Let’s get you oriented with what’s here and how to use it.
+Una librería de logging para aplicaciones Fastify que registra automáticamente todas las peticiones HTTP de manera estructurada, con soporte opcional para Google Cloud Logging.
 
-> This TSDX setup is meant for developing libraries (not apps!) that can be published to NPM. If you’re looking to build a Node app, you could use `ts-node-dev`, plain `ts-node`, or simple `tsc`.
-
-> If you’re new to TypeScript, checkout [this handy cheatsheet](https://devhints.io/typescript)
-
-## Commands
-
-TSDX scaffolds your new library inside `/src`.
-
-To run TSDX, use:
+## Instalación
 
 ```bash
-npm start # or yarn start
+npm install fastify-request-logs
 ```
 
-This builds to `/dist` and runs the project in watch mode so any edits you save inside `src` causes a rebuild to `/dist`.
+## Uso básico
 
-To do a one-off build, use `npm run build` or `yarn build`.
+```typescript
+import fastify from 'fastify';
+import { logger } from 'fastify-request-logs';
 
-To run tests, use `npm test` or `yarn test`.
+const app = fastify();
 
-## Configuration
+app.register(logger, {
+  only_errors: false,
+  domain: 'mi-api',
+  service: 'usuarios',
+  colors: true
+});
 
-Code quality is set up for you with `prettier`, `husky`, and `lint-staged`. Adjust the respective fields in `package.json` accordingly.
-
-### Jest
-
-Jest tests are set up to run with `npm test` or `yarn test`.
-
-### Bundle Analysis
-
-[`size-limit`](https://github.com/ai/size-limit) is set up to calculate the real cost of your library with `npm run size` and visualize the bundle with `npm run analyze`.
-
-#### Setup Files
-
-This is the folder structure we set up for you:
-
-```txt
-/src
-  index.tsx       # EDIT THIS
-/test
-  blah.test.tsx   # EDIT THIS
-.gitignore
-package.json
-README.md         # EDIT THIS
-tsconfig.json
+app.get('/test', async (request, reply) => {
+  // El logger está disponible automáticamente en cada request
+  request.logger.add('custom-log', 'Este es un log personalizado');
+  
+  return { message: 'Hello World' };
+});
 ```
 
-### Rollup
+## Configuración
 
-TSDX uses [Rollup](https://rollupjs.org) as a bundler and generates multiple rollup configs for various module formats and build settings. See [Optimizations](#optimizations) for details.
+### Opciones disponibles
 
-### TypeScript
-
-`tsconfig.json` is set up to interpret `dom` and `esnext` types, as well as `react` for `jsx`. Adjust according to your needs.
-
-## Continuous Integration
-
-### GitHub Actions
-
-Two actions are added by default:
-
-- `main` which installs deps w/ cache, lints, tests, and builds on all pushes against a Node and OS matrix
-- `size` which comments cost comparison of your library on every pull request using [`size-limit`](https://github.com/ai/size-limit)
-
-## Optimizations
-
-Please see the main `tsdx` [optimizations docs](https://github.com/palmerhq/tsdx#optimizations). In particular, know that you can take advantage of development-only optimizations:
-
-```js
-// ./types/index.d.ts
-declare var __DEV__: boolean;
-
-// inside your code...
-if (__DEV__) {
-  console.log('foo');
+```typescript
+interface LoggerOptions {
+  only_errors: boolean;           // Solo registrar errores
+  domain: string;                 // Dominio de la aplicación
+  service: string;                // Nombre del servicio
+  module?: string;                // Módulo específico (opcional)
+  colors: boolean;                // Habilitar colores en consola
+  useGCloudLogging?: boolean;     // Usar Google Cloud Logging
+  gcloudProjectId?: string;       // ID del proyecto de Google Cloud
 }
 ```
 
-You can also choose to install and use [invariant](https://github.com/palmerhq/tsdx#invariant) and [warning](https://github.com/palmerhq/tsdx#warning) functions.
+## Google Cloud Logging
 
-## Module Formats
+### Configuración básica
 
-CJS, ESModules, and UMD module formats are supported.
+Para usar Google Cloud Logging, configura las opciones así:
 
-The appropriate paths are configured in `package.json` and `dist/index.js` accordingly. Please report if any issues are found.
+```typescript
+app.register(logger, {
+  only_errors: false,
+  domain: 'mi-api',
+  service: 'usuarios',
+  colors: true,
+  useGCloudLogging: true,
+  gcloudProjectId: 'mi-proyecto-gcp'
+});
+```
 
-## Named Exports
+### Requisitos previos
 
-Per Palmer Group guidelines, [always use named exports.](https://github.com/palmerhq/typescript#exports) Code split inside your React app instead of your React library.
+1. **Instalar las dependencias de Google Cloud:**
+   ```bash
+   npm install @google-cloud/logging
+   ```
 
-## Including Styles
+2. **Configurar las credenciales de Google Cloud:**
+   - Configurar la variable de entorno `GOOGLE_APPLICATION_CREDENTIALS`
+   - O usar el SDK de Google Cloud (`gcloud auth application-default login`)
+   - O ejecutar en un entorno de Google Cloud (GKE, Cloud Run, etc.)
 
-There are many ways to ship styles, including with CSS-in-JS. TSDX has no opinion on this, configure how you like.
+### Características de Google Cloud Logging
 
-For vanilla CSS, you can include it at the root directory and add it to the `files` section in your `package.json`, so that it can be imported separately by your users and run through their bundler's loader.
+Cuando `useGCloudLogging` está habilitado:
 
-## Publishing to NPM
+- **Logs estructurados:** Los logs se envían con metadatos estructurados
+- **Severidad automática:** Se asigna automáticamente `INFO` o `ERROR` según el tipo de respuesta
+- **Etiquetas:** Se incluyen automáticamente las etiquetas de domain, service y module
+- **HTTP Request metadata:** Se incluye información de la petición HTTP (URL, método, status code)
+- **Fallback seguro:** Si hay errores con Google Cloud Logging, automáticamente regresa a console.log
 
-We recommend using [np](https://github.com/sindresorhus/np).
+### Ejemplo de log en Google Cloud
+
+```json
+{
+  "severity": "INFO",
+  "httpRequest": {
+    "status": 200,
+    "requestUrl": "/api/users",
+    "requestMethod": "GET"
+  },
+  "labels": {
+    "domain": "mi-api",
+    "service": "usuarios",
+    "module": "default"
+  },
+  "jsonPayload": {
+    "INFO": {
+      "__url": "/api/users",
+      "__method": "GET",
+      "__params": {},
+      "__body": {},
+      "domain": "mi-api",
+      "service": "usuarios"
+    },
+    "LOGS": {
+      "custom-log": "Este es un log personalizado"
+    },
+    "RESPONSE": {
+      "message": "Hello World",
+      "statusCode": 200
+    }
+  }
+}
+```
+
+## API de Logging
+
+### Logging personalizado
+
+```typescript
+app.get('/ejemplo', async (request, reply) => {
+  // Agregar logs personalizados
+  request.logger.add('usuario-id', request.user?.id);
+  request.logger.add('accion', 'consulta-datos');
+  
+  // Registrar errores específicos
+  try {
+    // ... código que puede fallar
+  } catch (error) {
+    request.logger.error('database-error', error.message, 'DB_001');
+  }
+  
+  return { success: true };
+});
+```
+
+### Soporte para Pub/Sub
+
+La librería detecta automáticamente payloads de Google Cloud Pub/Sub y los decodifica:
+
+```typescript
+// El body se decodifica automáticamente si es un mensaje de Pub/Sub
+app.post('/webhook', async (request, reply) => {
+  // request.logger capturará automáticamente el mensaje decodificado
+  return { received: true };
+});
+```
+
+## Configuración de desarrollo vs producción
+
+### Desarrollo
+```typescript
+app.register(logger, {
+  only_errors: false,
+  domain: 'dev-api',
+  service: 'usuarios',
+  colors: true,
+  useGCloudLogging: false  // Usar console.log en desarrollo
+});
+```
+
+### Producción
+```typescript
+app.register(logger, {
+  only_errors: false,
+  domain: 'prod-api',
+  service: 'usuarios',
+  colors: false,
+  useGCloudLogging: true,
+  gcloudProjectId: process.env.GOOGLE_CLOUD_PROJECT_ID
+});
+```
+
+## Estructura de logs
+
+Cada log incluye las siguientes secciones:
+
+- **INFO**: Información básica de la petición (URL, método, parámetros, body)
+- **LOGS**: Logs personalizados agregados con `request.logger.add()`
+- **RESPONSE**: Respuesta exitosa del endpoint
+- **ERROR_RESPONSE**: Respuesta de error (si aplica)
+- **ERRORS**: Errores específicos registrados con `request.logger.error()`
+
+## Licencia
+
+MIT

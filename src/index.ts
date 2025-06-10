@@ -8,6 +8,8 @@ export interface LoggerOptions {
   service: string;
   module?: string;
   colors: boolean;
+  useGCloudLogging?: boolean;
+  gcloudProjectId?: string;
 }
 
 export const LoggerInstance = Logger;
