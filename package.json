@@ -1,5 +1,5 @@
 {
-  "version": "1.5.2",
+  "version": "1.6.0",
   "license": "MIT",
   "main": "dist/index.js",
   "typings": "dist/index.d.ts",
@@ -58,6 +58,7 @@
     "@google-cloud/logging": "^11.0.0",
     "@types/is-base64": "^1.1.1",
     "circular-json": "^0.5.9",
+    "google-auth-library": "^9.0.0",
     "is-base64": "^1.1.0"
   }
 }

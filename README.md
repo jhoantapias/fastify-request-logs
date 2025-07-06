@@ -73,9 +73,39 @@ logger(app, {
    ```
 
 2. **Configurar las credenciales de Google Cloud:**
-   - Configurar la variable de entorno `GOOGLE_APPLICATION_CREDENTIALS`
-   - O usar el SDK de Google Cloud (`gcloud auth application-default login`)
-   - O ejecutar en un entorno de Google Cloud (GKE, Cloud Run, etc.)
+
+   **Opción A: Variable de entorno (Recomendado para producción)**
+   ```bash
+   export GOOGLE_APPLICATION_CREDENTIALS="/path/to/your/service-account-key.json"
+   ```
+
+   **Opción B: SDK de Google Cloud (Desarrollo local)**
+   ```bash
+   gcloud auth application-default login
+   ```
+
+   **Opción C: Entornos de Google Cloud (Automático)**
+   - Google Kubernetes Engine (GKE)
+   - Cloud Run
+   - Compute Engine
+   - App Engine
+
+3. **Configurar el proyecto de Google Cloud:**
+   ```bash
+   gcloud config set project YOUR_PROJECT_ID
+   ```
+
+### Verificar configuración
+
+Para verificar que todo está configurado correctamente:
+
+```bash
+# Verificar credenciales
+gcloud auth application-default print-access-token
+
+# Verificar proyecto activo
+gcloud config get-value project
+```
 
 ### Características de Google Cloud Logging
 
@@ -86,6 +116,70 @@ Cuando `useGCloudLogging` está habilitado:
 - **Etiquetas:** Se incluyen automáticamente las etiquetas de domain, service y module
 - **HTTP Request metadata:** Se incluye información de la petición HTTP (URL, método, status code)
 - **Fallback seguro:** Si hay errores con Google Cloud Logging, automáticamente regresa a console.log
+
+### Troubleshooting
+
+#### ❌ Error: "gcloudProjectId is required"
+```typescript
+// ❌ Incorrecto
+logger(app, {
+  useGCloudLogging: true  // Falta gcloudProjectId
+});
+
+// ✅ Correcto
+logger(app, {
+  useGCloudLogging: true,
+  gcloudProjectId: 'mi-proyecto-gcp'  // Requerido
+});
+```
+
+#### ❌ Error: "Error initializing Google Cloud Logging"
+
+**Causa común:** Credenciales no configuradas
+
+**Solución:**
+```bash
+# Para desarrollo local
+gcloud auth application-default login
+
+# Para producción
+export GOOGLE_APPLICATION_CREDENTIALS="/path/to/service-account.json"
+```
+
+#### ❌ Error: "Failed to write to Google Cloud Logging"
+
+**Causas posibles:**
+1. **Permisos insuficientes:** El service account necesita el rol `roles/logging.logWriter`
+2. **Proyecto incorrecto:** Verificar que el `gcloudProjectId` sea correcto
+3. **API no habilitada:** Habilitar Cloud Logging API
+
+**Soluciones:**
+```bash
+# Habilitar la API de Cloud Logging
+gcloud services enable logging.googleapis.com
+
+# Verificar permisos del service account
+gcloud projects get-iam-policy YOUR_PROJECT_ID
+
+# Otorgar permisos de logging
+gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
+  --member="serviceAccount:your-service-account@your-project.iam.gserviceaccount.com" \
+  --role="roles/logging.logWriter"
+```
+
+#### ⚠️ Warning: "Google Cloud Logging is enabled but not properly initialized"
+
+Esto indica que `useGCloudLogging: true` pero la inicialización falló. Revisa los mensajes de error anteriores para identificar la causa.
+
+#### 🔍 Verificar que los logs lleguen a Google Cloud
+
+1. **Ir a Google Cloud Console** → **Logging** → **Logs Explorer**
+2. **Filtrar por:**
+   ```
+   resource.type="global"
+   logName="projects/YOUR_PROJECT_ID/logs/DOMAIN-SERVICE-logs"
+   ```
+3. **Buscar logs recientes** de tu aplicación
 
 ### Ejemplo de log en Google Cloud
 

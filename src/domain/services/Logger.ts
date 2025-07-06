@@ -67,12 +67,18 @@ export class Logger implements Printer, Finisher {
         if (this.data.ERROR_RESPONSE)
           this.data.ERROR_RESPONSE.statusCode = statusCode;
       }
-      
+
       const json = CircularJSON.stringify(this.data);
-      
+
       // Si está habilitado Google Cloud Logging, usar esa librería
-      if (this.options.useGCloudLogging && this.gcloudLog) {
-        this.logToGCloud(json, isError, statusCode);
+      if (this.options.useGCloudLogging) {
+        if (this.gcloudLog) {
+          this.logToGCloud(json, isError, statusCode);
+        } else {
+          console.warn('⚠️  Google Cloud Logging is enabled but not properly initialized');
+          console.warn('📝 Using console logging as fallback');
+          this.logToConsole(json, log, statusCode);
+        }
       } else {
         // Usar console.log tradicional
         this.logToConsole(json, log, statusCode);
@@ -101,9 +107,19 @@ export class Logger implements Printer, Finisher {
       };
 
       const entry = this.gcloudLog.entry(metadata, JSON.parse(json));
-      this.gcloudLog.write(entry);
+
+      // Escribir a Google Cloud Logging de forma asíncrona
+      this.gcloudLog.write(entry).then(() => {
+        // Éxito silencioso - no spamear la consola
+      }).catch((error: any) => {
+        console.error('❌ Failed to write to Google Cloud Logging:', error);
+        console.error('🔍 Check your credentials and permissions');
+        // Fallback a console.log
+        this.logToConsole(json, isError ? 'error' : 'log', statusCode);
+      });
+
     } catch (error) {
-      console.error('Error writing to Google Cloud Logging:', error);
+      console.error('❌ Error preparing Google Cloud Logging entry:', error);
       // Fallback a console.log si hay error
       this.logToConsole(json, isError ? 'error' : 'log', statusCode);
     }
@@ -146,15 +162,35 @@ export class Logger implements Printer, Finisher {
     // Inicializar Google Cloud Logging si está habilitado
     if (this.options.useGCloudLogging) {
       try {
+        // Validar que se proporcione el project ID
+        if (!this.options.gcloudProjectId) {
+          console.error('❌ Google Cloud Logging Error: gcloudProjectId is required when useGCloudLogging is true');
+          console.error('💡 Solution: Set gcloudProjectId in logger options');
+          console.warn('📝 Falling back to console logging');
+          return;
+        }
+
+        console.log(`🔧 Initializing Google Cloud Logging for project: ${this.options.gcloudProjectId}`);
+
         this.gcloudLogging = new Logging({
           projectId: this.options.gcloudProjectId,
         });
-        this.gcloudLog = this.gcloudLogging.log(
-          `${this.options.domain}-${this.options.service}-logs`
-        );
+
+        const logName = `${this.options.domain}-${this.options.service}-logs`;
+        this.gcloudLog = this.gcloudLogging.log(logName);
+
+        console.log(`✅ Google Cloud Logging initialized successfully`);
+        console.log(`📄 Log name: ${logName}`);
+
       } catch (error) {
-        console.warn('Error initializing Google Cloud Logging:', error);
-        console.warn('Falling back to console logging');
+        console.error('❌ Error initializing Google Cloud Logging:', error);
+        console.error('🔍 Common issues:');
+        console.error('  1. GOOGLE_APPLICATION_CREDENTIALS not set');
+        console.error('  2. Invalid project ID');
+        console.error('  3. Missing @google-cloud/logging dependency');
+        console.error('  4. Insufficient permissions');
+        console.error('💡 Run: gcloud auth application-default login');
+        console.warn('📝 Falling back to console logging');
       }
     }
   }
