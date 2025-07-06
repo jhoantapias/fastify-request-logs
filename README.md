@@ -126,6 +126,7 @@ Cuando `useGCloudLogging` está habilitado:
 
 ### Logging personalizado
 
+#### Método tradicional (sigue funcionando)
 ```typescript
 app.get('/ejemplo', async (request, reply) => {
   // Agregar logs personalizados
@@ -141,6 +142,56 @@ app.get('/ejemplo', async (request, reply) => {
   
   return { success: true };
 });
+```
+
+#### Nuevo método con AsyncLocalStorage (✨ Recomendado)
+```typescript
+import { addLog, addError, getRequestLogger } from 'fastify-request-logs';
+
+// Funciones auxiliares que pueden hacer logging sin recibir parámetros
+async function getUserData(userId) {
+  addLog('function-called', 'getUserData');
+  addLog('user-id', userId);
+  
+  if (!userId) {
+    addError('validation-error', 'User ID is required', 'USER_001');
+    throw new Error('User ID is required');
+  }
+  
+  return { id: userId, name: 'John Doe' };
+}
+
+app.get('/ejemplo', async (request, reply) => {
+  // ✅ Ahora puedes hacer logging desde cualquier función
+  addLog('route-accessed', '/ejemplo');
+  
+  try {
+    const userData = await getUserData(request.params.id);
+    addLog('request-success', true);
+    
+    return userData;
+  } catch (error) {
+    // Los errores ya se registraron automáticamente
+    reply.code(400);
+    return { error: error.message, isError: true };
+  }
+});
+```
+
+### Funciones de conveniencia disponibles
+
+```typescript
+import { addLog, addError, getRequestLogger } from 'fastify-request-logs';
+
+// Agregar logs desde cualquier función
+addLog('key', 'value');
+
+// Registrar errores con código
+addError('error-type', 'Error message', 'ERR_001');
+
+// Obtener el logger completo si necesitas funcionalidades avanzadas
+const logger = getRequestLogger();
+logger.add('custom-log', 'value');
 ```
 
 ### Soporte para Pub/Sub
@@ -180,15 +231,55 @@ logger(app, {
 });
 ```
 
+## AsyncLocalStorage: Logging sin parámetros
+
+### Ventajas
+
+✅ **Sin pasar parámetros**: Puedes hacer logging desde cualquier función sin pasar `request.logger`  
+✅ **Agrupación automática**: Todos los logs de una petición se agrupan automáticamente  
+✅ **Seguro para concurrencia**: Compatible con múltiples réplicas y alta carga  
+✅ **Compatibilidad hacia atrás**: El método tradicional sigue funcionando  
+✅ **Funciona con async/await**: Mantiene el contexto a través de operaciones asíncronas  
+
+### Cómo funciona
+
+```typescript
+// Antes (incómodo)
+async function processData(data, logger) {
+  logger.add('processing-data', data);
+  
+  const result = await database.query(data);
+  logger.add('query-result', result);
+  
+  return result;
+}
+
+// Después (elegante)
+async function processData(data) {
+  addLog('processing-data', data);
+  
+  const result = await database.query(data);
+  addLog('query-result', result);
+  
+  return result;
+}
+```
+
+### Requisitos
+
+- **Node.js 12.17.0+** (para AsyncLocalStorage)
+- **Funciona en cualquier entorno**: On-premise, Google Cloud, AWS, etc.
+- **Compatible con clustering**: Funciona con múltiples workers
+
 ## Estructura de logs
 
 Cada log incluye las siguientes secciones:
 
 - **INFO**: Información básica de la petición (URL, método, parámetros, body)
-- **LOGS**: Logs personalizados agregados con `request.logger.add()`
+- **LOGS**: Logs personalizados agregados con `request.logger.add()` o `addLog()`
 - **RESPONSE**: Respuesta exitosa del endpoint
 - **ERROR_RESPONSE**: Respuesta de error (si aplica)
-- **ERRORS**: Errores específicos registrados con `request.logger.error()`
+- **ERRORS**: Errores específicos registrados con `request.logger.error()` o `addError()`
 
 ## Licencia
 

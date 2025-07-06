@@ -1,6 +1,7 @@
 import { Logger } from './domain';
 import { hasProperty } from './util';
 import { isObjectLike } from './util';
+import { RequestContext } from './context/RequestContext';
 
 export interface LoggerOptions {
   only_errors: boolean;
@@ -13,6 +14,9 @@ export interface LoggerOptions {
 }
 
 export const LoggerInstance = Logger;
+
+// Exportar funciones de conveniencia para usar AsyncLocalStorage
+export { getRequestLogger, addLog, addError } from './context/RequestContext';
 
 interface Instance {
   addHook(
@@ -46,15 +50,26 @@ interface Reply {
 
 export const logger = (application: Instance | any, options: LoggerOptions) => {
   if (!application) throw new Error('Application not found');
+
+  const requestContext = RequestContext.getInstance();
+
   application.addHook(
     'preHandler',
     (req: Request, _: unknown, done: Function) => {
+      const loggerInstance = new Logger(req, options);
+
+      // Asociar el logger al request (compatibilidad hacia atrás)
       Object.defineProperty(req, 'logger', {
-        value: new Logger(req, options),
+        value: loggerInstance,
       });
-      done();
+
+      // Ejecutar el resto del request dentro del contexto AsyncLocalStorage
+      requestContext.runWithLogger(loggerInstance, () => {
+        done();
+      });
     }
   );
+
   application.addHook(
     'onSend',
     (
