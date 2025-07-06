@@ -16,7 +16,7 @@ export interface LoggerOptions {
 export const LoggerInstance = Logger;
 
 // Exportar funciones de conveniencia para usar AsyncLocalStorage
-export { getRequestLogger, addLog, addError } from './context/RequestContext';
+export { getRequestLogger, addLog, addLogError as addError } from './context/RequestContext';
 
 interface Instance {
   addHook(
