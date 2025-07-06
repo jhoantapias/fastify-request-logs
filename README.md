@@ -146,15 +146,15 @@ app.get('/ejemplo', async (request, reply) => {
 
 #### Nuevo método con AsyncLocalStorage (✨ Recomendado)
 ```typescript
-import { addLog, addError, getRequestLogger } from 'fastify-request-logs';
+import { printLog, printError, getRequestLogger } from 'fastify-request-logs';
 
 // Funciones auxiliares que pueden hacer logging sin recibir parámetros
 async function getUserData(userId) {
-  addLog('function-called', 'getUserData');
-  addLog('user-id', userId);
+  printLog('function-called', 'getUserData');
+  printLog('user-id', userId);
   
   if (!userId) {
-    addError('validation-error', 'User ID is required', 'USER_001');
+    printError('validation-error', 'User ID is required', 'USER_001');
     throw new Error('User ID is required');
   }
   
@@ -163,11 +163,11 @@ async function getUserData(userId) {
 
 app.get('/ejemplo', async (request, reply) => {
   // ✅ Ahora puedes hacer logging desde cualquier función
-  addLog('route-accessed', '/ejemplo');
+  printLog('route-accessed', '/ejemplo');
   
   try {
     const userData = await getUserData(request.params.id);
-    addLog('request-success', true);
+    printLog('request-success', true);
     
     return userData;
   } catch (error) {
@@ -181,13 +181,13 @@ app.get('/ejemplo', async (request, reply) => {
 ### Funciones de conveniencia disponibles
 
 ```typescript
-import { addLog, addError, getRequestLogger } from 'fastify-request-logs';
+import { printLog, printError, getRequestLogger } from 'fastify-request-logs';
 
 // Agregar logs desde cualquier función
-addLog('key', 'value');
+printLog('key', 'value');
 
 // Registrar errores con código
-addError('error-type', 'Error message', 'ERR_001');
+printError('error-type', 'Error message', 'ERR_001');
 
 // Obtener el logger completo si necesitas funcionalidades avanzadas
 const logger = getRequestLogger();
@@ -256,10 +256,10 @@ async function processData(data, logger) {
 
 // Después (elegante)
 async function processData(data) {
-  addLog('processing-data', data);
+  printLog('processing-data', data);
   
   const result = await database.query(data);
-  addLog('query-result', result);
+  printLog('query-result', result);
   
   return result;
 }
@@ -276,10 +276,10 @@ async function processData(data) {
 Cada log incluye las siguientes secciones:
 
 - **INFO**: Información básica de la petición (URL, método, parámetros, body)
-- **LOGS**: Logs personalizados agregados con `request.logger.add()` o `addLog()`
+- **LOGS**: Logs personalizados agregados con `request.logger.add()` o `printLog()`
 - **RESPONSE**: Respuesta exitosa del endpoint
 - **ERROR_RESPONSE**: Respuesta de error (si aplica)
-- **ERRORS**: Errores específicos registrados con `request.logger.error()` o `addError()`
+- **ERRORS**: Errores específicos registrados con `request.logger.error()` o `printError()`
 
 ## Licencia
 

@@ -38,14 +38,14 @@ export const getRequestLogger = (): Logger => {
     return RequestContext.getInstance().getCurrentLogger();
 };
 
-export const addLog = (key: string, value: unknown): void => {
+export const printLog = (key: string, value: unknown): void => {
     const logger = RequestContext.getInstance().getLogger();
     if (logger) {
         logger.add(key, value);
     }
 };
 
-export const addLogError = (key: string, value: unknown, code?: string): void => {
+export const printError = (key: string, value: unknown, code?: string): void => {
     const logger = RequestContext.getInstance().getLogger();
     if (logger) {
         logger.error(key, value, code);

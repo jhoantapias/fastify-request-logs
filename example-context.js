@@ -1,5 +1,5 @@
 const fastify = require('fastify')({ logger: false });
-const { logger, addLog, addError, getRequestLogger } = require('./dist/index.js');
+const { logger, printLog, printError, getRequestLogger } = require('./dist/index.js');
 
 // Configuración del logger
 logger(fastify, {
@@ -14,43 +14,43 @@ logger(fastify, {
 // Funciones auxiliares que pueden hacer logging sin recibir parámetros
 async function getUserData(userId) {
   // ✅ Ahora puedes hacer logging sin pasar request.logger
-  addLog('function-called', 'getUserData');
-  addLog('user-id', userId);
+  printLog('function-called', 'getUserData');
+  printLog('user-id', userId);
   
   // Simular consulta a base de datos
   await new Promise(resolve => setTimeout(resolve, 100));
   
   if (userId === 'invalid') {
-    addError('validation-error', 'Invalid user ID', 'USER_001');
+    printError('validation-error', 'Invalid user ID', 'USER_001');
     throw new Error('Invalid user ID');
   }
   
   const userData = { id: userId, name: 'John Doe', email: 'john@example.com' };
-  addLog('user-data-retrieved', userData);
+  printLog('user-data-retrieved', userData);
   
   return userData;
 }
 
 async function processPayment(amount) {
-  addLog('function-called', 'processPayment');
-  addLog('payment-amount', amount);
+  printLog('function-called', 'processPayment');
+  printLog('payment-amount', amount);
   
   // Simular procesamiento
   await new Promise(resolve => setTimeout(resolve, 200));
   
   if (amount <= 0) {
-    addError('payment-error', 'Invalid payment amount', 'PAY_001');
+    printError('payment-error', 'Invalid payment amount', 'PAY_001');
     throw new Error('Invalid payment amount');
   }
   
   const paymentId = 'pay_' + Date.now();
-  addLog('payment-processed', { paymentId, amount });
+  printLog('payment-processed', { paymentId, amount });
   
   return { paymentId, status: 'completed' };
 }
 
 async function sendNotification(message) {
-  addLog('function-called', 'sendNotification');
+  printLog('function-called', 'sendNotification');
   
   // Puedes acceder al logger completo si necesitas funcionalidades avanzadas
   const logger = getRequestLogger();
@@ -59,7 +59,7 @@ async function sendNotification(message) {
   // Simular envío de notificación
   await new Promise(resolve => setTimeout(resolve, 50));
   
-  addLog('notification-sent', true);
+  printLog('notification-sent', true);
 }
 
 // Rutas de ejemplo
@@ -70,15 +70,15 @@ fastify.get('/user/:id', async (request, reply) => {
   request.logger.add('route-accessed', '/user/:id');
   
   // Opción 2: Usar las nuevas funciones globales
-  addLog('request-start', Date.now());
+  printLog('request-start', Date.now());
   
   try {
     const userData = await getUserData(id);
-    addLog('request-success', true);
+    printLog('request-success', true);
     
     return userData;
   } catch (error) {
-    addError('request-error', error.message, 'REQ_001');
+    printError('request-error', error.message, 'REQ_001');
     reply.code(400);
     return { error: error.message, isError: true };
   }
@@ -87,8 +87,8 @@ fastify.get('/user/:id', async (request, reply) => {
 fastify.post('/process-order', async (request, reply) => {
   const { userId, amount } = request.body;
   
-  addLog('route-accessed', '/process-order');
-  addLog('order-data', { userId, amount });
+  printLog('route-accessed', '/process-order');
+  printLog('order-data', { userId, amount });
   
   try {
     // Todas estas funciones pueden hacer logging sin pasar parámetros
@@ -96,7 +96,7 @@ fastify.post('/process-order', async (request, reply) => {
     const payment = await processPayment(amount);
     await sendNotification(`Order processed for user ${user.name}`);
     
-    addLog('order-completed', true);
+    printLog('order-completed', true);
     
     return {
       success: true,
@@ -105,21 +105,21 @@ fastify.post('/process-order', async (request, reply) => {
       payment: payment
     };
   } catch (error) {
-    addError('order-error', error.message, 'ORDER_001');
+    printError('order-error', error.message, 'ORDER_001');
     reply.code(400);
     return { error: error.message, isError: true };
   }
 });
 
 fastify.get('/error-demo', async (request, reply) => {
-  addLog('route-accessed', '/error-demo');
+  printLog('route-accessed', '/error-demo');
   
   // Simular múltiples llamadas a funciones que hacen logging
   try {
     await getUserData('invalid');
   } catch (error) {
     // La función ya registró el error automáticamente
-    addLog('error-handled', true);
+    printLog('error-handled', true);
   }
   
   reply.code(500);
@@ -132,7 +132,7 @@ fastify.get('/backward-compatibility', async (request, reply) => {
   request.logger.add('traditional-method', 'funciona');
   
   // Nuevo método global
-  addLog('global-method', 'también funciona');
+  printLog('global-method', 'también funciona');
   
   // Ambos aparecerán en el mismo log agrupado
   return { message: 'Ambos métodos funcionan' };
@@ -145,8 +145,8 @@ const start = async () => {
     console.log('🚀 Servidor con contexto AsyncLocalStorage iniciado en http://localhost:3001');
     console.log('');
     console.log('✨ Nuevas funciones disponibles:');
-    console.log('  - addLog(key, value)');
-    console.log('  - addError(key, value, code)');
+    console.log('  - printLog(key, value)');
+    console.log('  - printError(key, value, code)');
     console.log('  - getRequestLogger()');
     console.log('');
     console.log('🔗 Prueba estas rutas:');
