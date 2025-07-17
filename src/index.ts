@@ -56,6 +56,22 @@ export const logger = (application: Instance | any, options: LoggerOptions) => {
   application.addHook(
     'preHandler',
     (req: Request, _: unknown, done: Function) => {
+      // Para requests OPTIONS, crear un logger dummy que no haga nada
+      if (req.method === 'OPTIONS') {
+        // Crear un logger dummy para OPTIONS requests
+        const dummyLogger = {
+          add: () => { },
+          error: () => { },
+          finish: () => { }
+        };
+
+        Object.defineProperty(req, 'logger', {
+          value: dummyLogger,
+        });
+
+        return done();
+      }
+
       const loggerInstance = new Logger(req, options);
 
       // Asociar el logger al request (compatibilidad hacia atrás)
@@ -78,17 +94,24 @@ export const logger = (application: Instance | any, options: LoggerOptions) => {
       payload: Record<string, unknown>,
       done: Function
     ) => {
-      if ('logger' in req) {
+      // Para requests OPTIONS, salir temprano sin procesamiento
+      if (req.method === 'OPTIONS') {
+        return done();
+      }
+
+      if ('logger' in req && req.logger) {
         const logger = req.logger as Logger;
-        const isError =
-          isObjectLike(payload) &&
-          hasProperty(payload as object, 'isError') &&
-          (payload as { isError?: boolean })?.isError === true;
-        logger.finish(payload, isError, res?.statusCode);
+        // Verificar que el logger tiene el método finish (no es el dummy)
+        if (typeof logger.finish === 'function') {
+          const isError =
+            isObjectLike(payload) &&
+            hasProperty(payload as object, 'isError') &&
+            (payload as { isError?: boolean })?.isError === true;
+          logger.finish(payload, isError, res?.statusCode);
+        }
       } else {
         console.error('MESSAGE: Logger is not implemented');
         console.log('ERROR: ', payload);
-        res.send(payload);
       }
       done();
     }
